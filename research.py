@@ -1,3 +1,4 @@
+```python
 import os
 import requests
 import time
@@ -28,26 +29,28 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 
 def save_research_notes(text: str) -> str:
-    """Save research notes to a file."""
+    """Saves research notes to a file."""
     try:
         # Create a notes directory if it doesn't exist
-        if not os.path.exists("research_notes"):
-            os.makedirs("research_notes")
+        notes_dir = "research_notes"
+        if not os.path.exists(notes_dir):
+            os.makedirs(notes_dir)
         
         # Generate a timestamp for the filename
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        filename = f"research_notes/notes_{timestamp}.txt"
+        filename = os.path.join(notes_dir, f"notes_{timestamp}.txt")
         
         # Write the notes to the file
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(text)
+        with open(filename, "w", encoding="utf-8") as file:
+            file.write(text)
         
         return f"Notes successfully saved to {filename}"
     except Exception as e:
         return f"Error saving notes: {e}"
 
+
 def summarize_text(text: str) -> str:
-    """Summarize the provided text using the LLM."""
+    """Summarizes the provided text using the LLM."""
     try:
         from langchain_core.prompts import ChatPromptTemplate
         
@@ -57,20 +60,21 @@ def summarize_text(text: str) -> str:
             ("user", "Please summarize the following text in a concise manner, highlighting the most important points:\n\n{text}")
         ])
         
-        # We'll initialize the LLM here to avoid circular imports
+        # Initialize the LLM here to avoid circular imports
         summarizer = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
             temperature=0
         )
         
-        summary = summarizer.invoke(summary_prompt.format(text=text))
-        return summary.content
+        summary_response = summarizer.invoke(summary_prompt.format(text=text))
+        return summary_response.content
     except Exception as e:
         return f"Error summarizing text: {e}"
 
-# Initialize tools
-tools = []
+
+# Initialize an empty list to hold the tools
+tools: List[Tool] = []
 
 # Note-taking tool
 notes_tool = Tool(
@@ -91,28 +95,28 @@ tools.append(summarize_tool)
 # Tavily search tool
 if TAVILY_API_KEY:
     try:
-        tavily_tool = TavilySearchResults(
+        tavily_search = TavilySearchResults(
             tavily_api_key=TAVILY_API_KEY,
             max_results=5,  # Increased for more comprehensive research
             include_raw_content=True,  # Get full content when available
             include_domains=["scholar.google.com", "researchgate.net", "academia.edu", "arxiv.org"]  # Focus on academic sources
         )
         
-        search_tool = Tool(
+        web_search_tool = Tool(
             name="WebSearch",
             description="Search the web for current information. Useful for finding recent research, news, or general information. Input should be a search query.",
-            func=tavily_tool.invoke
+            func=tavily_search.invoke
         )
-        tools.append(search_tool)
+        tools.append(web_search_tool)
     except Exception as e:
         print(f"Error initializing Tavily search: {e}")
 
 # Wikipedia tool
 try:
-    wiki = WikipediaAPIWrapper(top_k_results=3)  # Get more results for comprehensive research
+    wikipedia = WikipediaAPIWrapper(top_k_results=3)  # Get more results for comprehensive research
     wikipedia_tool = Tool(
         name="Wikipedia",
-        func=wiki.run,
+        func=wikipedia.run,
         description="Useful for retrieving background information and established knowledge from Wikipedia. Input should be a search query."
     )
     tools.append(wikipedia_tool)
@@ -121,25 +125,25 @@ except Exception as e:
 
 # ArXiv tool for academic papers
 try:
-    arxiv_tool = ArxivQueryRun()
-    arxiv_search = Tool(
+    arxiv = ArxivQueryRun()
+    arxiv_tool = Tool(
         name="ArxivSearch",
-        func=arxiv_tool.run,
+        func=arxiv.run,
         description="Search arXiv for scientific papers and research. Useful for finding academic papers on specific topics. Input should be a search query."
     )
-    tools.append(arxiv_search)
+    tools.append(arxiv_tool)
 except Exception as e:
     print(f"Error initializing ArXiv tool: {e}")
 
 # PubMed tool for medical research
 try:
-    pubmed_tool = PubmedQueryRun()
-    pubmed_search = Tool(
+    pubmed = PubmedQueryRun()
+    pubmed_tool = Tool(
         name="PubMedSearch",
-        func=pubmed_tool.run,
+        func=pubmed.run,
         description="Search PubMed for medical and biological research papers. Useful for finding medical studies and health information. Input should be a search query."
     )
-    tools.append(pubmed_search)
+    tools.append(pubmed_tool)
 except Exception as e:
     print(f"Error initializing PubMed tool: {e}")
 
@@ -147,20 +151,23 @@ except Exception as e:
 from langchain.tools import Tool
 
 def google_scholar_search(query: str) -> str:
+    """Searches Google Scholar for academic papers."""
     try:
         from scholarly import scholarly
-        results = []
+        
+        results: List[str] = []  # Initialize an empty list for results
         search_query = scholarly.search_pubs(query)
+        
         for i in range(5):
             try:
-                pub = next(search_query)
-                pub_info = f"Title: {pub['bib'].get('title', 'No title')}\n"
-                pub_info += f"Authors: {pub['bib'].get('author', 'Unknown')}\n"
-                pub_info += f"Year: {pub['bib'].get('pub_year', 'Unknown')}\n"
-                pub_info += f"Venue: {pub['bib'].get('venue', 'Unknown')}\n"
-                pub_info += f"Citations: {pub.get('num_citations', 0)}\n"
-                pub_info += f"Abstract: {pub['bib'].get('abstract', 'No abstract available')[:200]}...\n"
-                results.append(pub_info)
+                publication = next(search_query)
+                publication_info = f"Title: {publication['bib'].get('title', 'No title')}\n"
+                publication_info += f"Authors: {publication['bib'].get('author', 'Unknown')}\n"
+                publication_info += f"Year: {publication['bib'].get('pub_year', 'Unknown')}\n"
+                publication_info += f"Venue: {publication['bib'].get('venue', 'Unknown')}\n"
+                publication_info += f"Citations: {publication.get('num_citations', 0)}\n"
+                publication_info += f"Abstract: {publication['bib'].get('abstract', 'No abstract available')[:200]}...\n"
+                results.append(publication_info)
             except StopIteration:
                 break
             except Exception as e:
@@ -239,7 +246,7 @@ try:
     # Function to conduct research
     def conduct_research(query: str) -> Dict[str, Any]:
         """
-        Conduct comprehensive research on a given query.
+        Conducts comprehensive research on a given query.
         
         Args:
             query: The research question or topic
@@ -254,7 +261,7 @@ try:
         result = agent_executor.invoke({"input": research_query})
         
         # Format the output
-        formatted_result = {
+        formatted_result: Dict[str, Any] = {
             "query": query,
             "answer": result["output"],
             "sources": [],
@@ -287,19 +294,23 @@ try:
     
     # Function to save research results
     def save_research_results(results: Dict[str, Any], filename: Optional[str] = None) -> str:
-        """Save research results to a JSON file."""
+        """Saves research results to a JSON file."""
+        
+        # Generate a filename if one isn't provided
         if not filename:
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             filename = f"research_results_{timestamp}.json"
         
         # Create research_results directory if it doesn't exist
-        if not os.path.exists("research_results"):
-            os.makedirs("research_results")
+        results_dir = "research_results"
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
         
-        filepath = f"research_results/{filename}"
+        filepath = os.path.join(results_dir, filename)
         
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
+        # Save the research results to the file
+        with open(filepath, "w", encoding="utf-8") as file:
+            json.dump(results, file, indent=2, ensure_ascii=False)
         
         return f"Research results saved to {filepath}"
 
@@ -309,7 +320,7 @@ try:
         print("Available tools:", ", ".join([tool.name for tool in tools]))
         
         # Example research queries
-        research_queries = [
+        example_queries = [
             "What are the latest advancements in quantum computing?",
             "How does climate change affect marine ecosystems?",
             "What is the current consensus on the benefits and risks of artificial intelligence?"
@@ -317,7 +328,7 @@ try:
         
         # Ask user to select a query or enter their own
         print("\nExample research topics:")
-        for i, query in enumerate(research_queries):
+        for i, query in enumerate(example_queries):
             print(f"{i+1}. {query}")
         print("4. Enter your own research topic")
         
@@ -326,7 +337,7 @@ try:
         if choice == "4":
             research_topic = input("\nEnter your research topic: ")
         elif choice in ["1", "2", "3"]:
-            research_topic = research_queries[int(choice)-1]
+            research_topic = example_queries[int(choice)-1]
         else:
             research_topic = "What are the latest advancements in quantum computing?"
         
@@ -334,20 +345,20 @@ try:
         print("This may take a few minutes for comprehensive research...\n")
         
         # Conduct research
-        results = conduct_research(research_topic)
+        research_results = conduct_research(research_topic)
         
         # Display results
         print("\n📊 Research Results 📊")
-        print(f"Query: {results['query']}")
+        print(f"Query: {research_results['query']}")
         print("\nAnswer:")
-        print(results['answer'])
+        print(research_results['answer'])
         
         print("\nSources used:")
-        for source in results['sources']:
+        for source in research_results['sources']:
             print(f"- {source['source_type']}: {source['query']}")
         
         # Save results
-        save_path = save_research_results(results)
+        save_path = save_research_results(research_results)
         print(f"\nResearch results saved to {save_path}")
         
 except Exception as e:
@@ -356,3 +367,4 @@ except Exception as e:
     traceback.print_exc()
     print("\nPlease ensure required packages are installed:")
     print("pip install -U langchain langchain-google-genai langchain-community google-generativeai requests python-dotenv wikipedia arxiv pypubmed scholarly")
+```
