@@ -31,14 +31,16 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 def save_research_notes(text: str) -> str:
     """Saves research notes to a file."""
     try:
-        # Create a notes directory if it doesn't exist
-        notes_dir = "research_notes"
-        if not os.path.exists(notes_dir):
-            os.makedirs(notes_dir)
+        # Define the directory for saving notes
+        notes_directory = "research_notes"
+
+        # Create the directory if it doesn't exist
+        if not os.path.exists(notes_directory):
+            os.makedirs(notes_directory)
         
         # Generate a timestamp for the filename
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        filename = os.path.join(notes_dir, f"notes_{timestamp}.txt")
+        filename = os.path.join(notes_directory, f"notes_{timestamp}.txt")
         
         # Write the notes to the file
         with open(filename, "w", encoding="utf-8") as file:
@@ -54,7 +56,7 @@ def summarize_text(text: str) -> str:
     try:
         from langchain_core.prompts import ChatPromptTemplate
         
-        # Use the same LLM to summarize the text
+        # Define the prompt for summarization
         summary_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a helpful assistant that summarizes text concisely while preserving key information."),
             ("user", "Please summarize the following text in a concise manner, highlighting the most important points:\n\n{text}")
@@ -67,6 +69,7 @@ def summarize_text(text: str) -> str:
             temperature=0
         )
         
+        # Get the summary from the LLM
         summary_response = summarizer.invoke(summary_prompt.format(text=text))
         return summary_response.content
     except Exception as e:
@@ -75,6 +78,8 @@ def summarize_text(text: str) -> str:
 
 # Initialize an empty list to hold the tools
 tools: List[Tool] = []
+
+# Define tools with their names, functions, and descriptions
 
 # Note-taking tool
 notes_tool = Tool(
@@ -155,7 +160,7 @@ def google_scholar_search(query: str) -> str:
     try:
         from scholarly import scholarly
         
-        results: List[str] = []  # Initialize an empty list for results
+        search_results: List[str] = []  # Initialize an empty list for results
         search_query = scholarly.search_pubs(query)
         
         for i in range(5):
@@ -167,13 +172,13 @@ def google_scholar_search(query: str) -> str:
                 publication_info += f"Venue: {publication['bib'].get('venue', 'Unknown')}\n"
                 publication_info += f"Citations: {publication.get('num_citations', 0)}\n"
                 publication_info += f"Abstract: {publication['bib'].get('abstract', 'No abstract available')[:200]}...\n"
-                results.append(publication_info)
+                search_results.append(publication_info)
             except StopIteration:
                 break
             except Exception as e:
-                results.append(f"Error retrieving publication: {str(e)}")
+                search_results.append(f"Error retrieving publication: {str(e)}")
         
-        return "\n\n".join(results) if results else "No results found on Google Scholar for this query."
+        return "\n\n".join(search_results) if search_results else "No results found on Google Scholar for this query."
     except ImportError:
         return "The scholarly library is not installed. Please install it using: pip install scholarly"
     except Exception as e:
@@ -255,10 +260,10 @@ try:
             Dictionary containing the research results and process
         """
         # Add a research prefix to help guide the agent
-        research_query = f"Research question: {query}\n\nPlease conduct thorough research on this topic, using multiple sources and providing a comprehensive answer with citations."
+        research_prompt = f"Research question: {query}\n\nPlease conduct thorough research on this topic, using multiple sources and providing a comprehensive answer with citations."
         
         # Run the agent
-        result = agent_executor.invoke({"input": research_query})
+        result = agent_executor.invoke({"input": research_prompt})
         
         # Format the output
         formatted_result: Dict[str, Any] = {
@@ -272,21 +277,21 @@ try:
         if hasattr(agent_executor, "intermediate_steps"):
             for step in agent_executor.intermediate_steps:
                 if len(step) >= 2:
-                    tool = step[0].tool
+                    tool_name = step[0].tool
                     tool_input = step[0].tool_input
                     tool_output = step[1]
                     
                     # Add to research process
                     formatted_result["research_process"].append({
-                        "tool": tool,
+                        "tool": tool_name,
                         "query": tool_input,
                         "result_summary": summarize_text(str(tool_output)) if len(str(tool_output)) > 500 else str(tool_output)
                     })
                     
                     # Add to sources if it's a search tool
-                    if tool in ["WebSearch", "ArxivSearch", "PubMedSearch", "GoogleScholarSearch", "Wikipedia"]:
+                    if tool_name in ["WebSearch", "ArxivSearch", "PubMedSearch", "GoogleScholarSearch", "Wikipedia"]:
                         formatted_result["sources"].append({
-                            "source_type": tool,
+                            "source_type": tool_name,
                             "query": tool_input
                         })
         
@@ -301,12 +306,14 @@ try:
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             filename = f"research_results_{timestamp}.json"
         
+        # Define the directory for saving results
+        results_directory = "research_results"
+
         # Create research_results directory if it doesn't exist
-        results_dir = "research_results"
-        if not os.path.exists(results_dir):
-            os.makedirs(results_dir)
+        if not os.path.exists(results_directory):
+            os.makedirs(results_directory)
         
-        filepath = os.path.join(results_dir, filename)
+        filepath = os.path.join(results_directory, filename)
         
         # Save the research results to the file
         with open(filepath, "w", encoding="utf-8") as file:
@@ -332,12 +339,12 @@ try:
             print(f"{i+1}. {query}")
         print("4. Enter your own research topic")
         
-        choice = input("\nSelect an option (1-4): ")
+        user_choice = input("\nSelect an option (1-4): ")
         
-        if choice == "4":
+        if user_choice == "4":
             research_topic = input("\nEnter your research topic: ")
-        elif choice in ["1", "2", "3"]:
-            research_topic = example_queries[int(choice)-1]
+        elif user_choice in ["1", "2", "3"]:
+            research_topic = example_queries[int(user_choice)-1]
         else:
             research_topic = "What are the latest advancements in quantum computing?"
         
