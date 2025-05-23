@@ -1,12 +1,12 @@
 ```python
 import os
-import requests
 import time
 import json
 from typing import List, Dict, Any, Optional
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Import for Google Gemini
@@ -24,28 +24,26 @@ from langchain_community.tools.arxiv.tool import ArxivQueryRun
 from langchain_community.tools.pubmed.tool import PubmedQueryRun
 
 # Get API keys from environment variables
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY")
+TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY")
 
 
 def save_research_notes(text: str) -> str:
     """Saves research notes to a file."""
-    try:
-        # Define the directory for saving notes
-        notes_directory = "research_notes"
+    notes_directory: str = "research_notes"  # Define the directory for saving notes
 
-        # Create the directory if it doesn't exist
-        if not os.path.exists(notes_directory):
-            os.makedirs(notes_directory)
-        
-        # Generate a timestamp for the filename
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
-        filename = os.path.join(notes_directory, f"notes_{timestamp}.txt")
-        
-        # Write the notes to the file
+    # Create the directory if it doesn't exist
+    if not os.path.exists(notes_directory):
+        os.makedirs(notes_directory)
+
+    # Generate a timestamp for the filename
+    timestamp: str = time.strftime("%Y%m%d-%H%M%S")
+    filename: str = os.path.join(notes_directory, f"notes_{timestamp}.txt")
+
+    # Write the notes to the file
+    try:
         with open(filename, "w", encoding="utf-8") as file:
             file.write(text)
-        
         return f"Notes successfully saved to {filename}"
     except Exception as e:
         return f"Error saving notes: {e}"
@@ -55,20 +53,22 @@ def summarize_text(text: str) -> str:
     """Summarizes the provided text using the LLM."""
     try:
         from langchain_core.prompts import ChatPromptTemplate
-        
+
         # Define the prompt for summarization
         summary_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a helpful assistant that summarizes text concisely while preserving key information."),
-            ("user", "Please summarize the following text in a concise manner, highlighting the most important points:\n\n{text}")
+            ("system",
+             "You are a helpful assistant that summarizes text concisely while preserving key information."),
+            ("user",
+             "Please summarize the following text in a concise manner, highlighting the most important points:\n\n{text}")
         ])
-        
+
         # Initialize the LLM here to avoid circular imports
         summarizer = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
             temperature=0
         )
-        
+
         # Get the summary from the LLM
         summary_response = summarizer.invoke(summary_prompt.format(text=text))
         return summary_response.content
@@ -104,9 +104,10 @@ if TAVILY_API_KEY:
             tavily_api_key=TAVILY_API_KEY,
             max_results=5,  # Increased for more comprehensive research
             include_raw_content=True,  # Get full content when available
-            include_domains=["scholar.google.com", "researchgate.net", "academia.edu", "arxiv.org"]  # Focus on academic sources
+            include_domains=["scholar.google.com", "researchgate.net", "academia.edu", "arxiv.org"]
+            # Focus on academic sources
         )
-        
+
         web_search_tool = Tool(
             name="WebSearch",
             description="Search the web for current information. Useful for finding recent research, news, or general information. Input should be a search query.",
@@ -152,18 +153,16 @@ try:
 except Exception as e:
     print(f"Error initializing PubMed tool: {e}")
 
-# Google Scholar tool using scholarly library
-from langchain.tools import Tool
 
 def google_scholar_search(query: str) -> str:
     """Searches Google Scholar for academic papers."""
     try:
         from scholarly import scholarly
-        
+
         search_results: List[str] = []  # Initialize an empty list for results
         search_query = scholarly.search_pubs(query)
-        
-        for i in range(5):
+
+        for _ in range(5):  # Limiting search to the first 5 results
             try:
                 publication = next(search_query)
                 publication_info = f"Title: {publication['bib'].get('title', 'No title')}\n"
@@ -177,12 +176,16 @@ def google_scholar_search(query: str) -> str:
                 break
             except Exception as e:
                 search_results.append(f"Error retrieving publication: {str(e)}")
-        
+
         return "\n\n".join(search_results) if search_results else "No results found on Google Scholar for this query."
     except ImportError:
         return "The scholarly library is not installed. Please install it using: pip install scholarly"
     except Exception as e:
         return f"Error searching Google Scholar: {str(e)}"
+
+
+# Google Scholar tool using scholarly library
+from langchain.tools import Tool
 
 scholar_tool = Tool(
     name="GoogleScholarSearch",
@@ -247,24 +250,24 @@ try:
             "prefix": research_system_message
         }
     )
-    
-    # Function to conduct research
+
+
     def conduct_research(query: str) -> Dict[str, Any]:
         """
         Conducts comprehensive research on a given query.
-        
+
         Args:
             query: The research question or topic
-            
+
         Returns:
             Dictionary containing the research results and process
         """
         # Add a research prefix to help guide the agent
         research_prompt = f"Research question: {query}\n\nPlease conduct thorough research on this topic, using multiple sources and providing a comprehensive answer with citations."
-        
+
         # Run the agent
         result = agent_executor.invoke({"input": research_prompt})
-        
+
         # Format the output
         formatted_result: Dict[str, Any] = {
             "query": query,
@@ -272,7 +275,7 @@ try:
             "sources": [],
             "research_process": []
         }
-        
+
         # Extract sources and research process from intermediate steps
         if hasattr(agent_executor, "intermediate_steps"):
             for step in agent_executor.intermediate_steps:
@@ -280,98 +283,106 @@ try:
                     tool_name = step[0].tool
                     tool_input = step[0].tool_input
                     tool_output = step[1]
-                    
+
                     # Add to research process
                     formatted_result["research_process"].append({
                         "tool": tool_name,
                         "query": tool_input,
-                        "result_summary": summarize_text(str(tool_output)) if len(str(tool_output)) > 500 else str(tool_output)
+                        "result_summary": summarize_text(str(tool_output)) if len(str(tool_output)) > 500 else str(
+                            tool_output)
                     })
-                    
+
                     # Add to sources if it's a search tool
                     if tool_name in ["WebSearch", "ArxivSearch", "PubMedSearch", "GoogleScholarSearch", "Wikipedia"]:
                         formatted_result["sources"].append({
                             "source_type": tool_name,
                             "query": tool_input
                         })
-        
+
         return formatted_result
-    
+
+
     # Function to save research results
     def save_research_results(results: Dict[str, Any], filename: Optional[str] = None) -> str:
         """Saves research results to a JSON file."""
-        
+
         # Generate a filename if one isn't provided
         if not filename:
-            timestamp = time.strftime("%Y%m%d-%H%M%S")
-            filename = f"research_results_{timestamp}.json"
-        
+            timestamp: str = time.strftime("%Y%m%d-%H%M%S")
+            filename: str = f"research_results_{timestamp}.json"
+
         # Define the directory for saving results
-        results_directory = "research_results"
+        results_directory: str = "research_results"
 
         # Create research_results directory if it doesn't exist
         if not os.path.exists(results_directory):
             os.makedirs(results_directory)
-        
-        filepath = os.path.join(results_directory, filename)
-        
+
+        filepath: str = os.path.join(results_directory, filename)
+
         # Save the research results to the file
-        with open(filepath, "w", encoding="utf-8") as file:
-            json.dump(results, file, indent=2, ensure_ascii=False)
-        
-        return f"Research results saved to {filepath}"
+        try:
+            with open(filepath, "w", encoding="utf-8") as file:
+                json.dump(results, file, indent=2, ensure_ascii=False)
+
+            return f"Research results saved to {filepath}"
+        except Exception as e:
+            return f"Error saving research results: {e}"
+
 
     # Example usage
     if __name__ == "__main__":
         print("🔍 Research Agent Initialized 🔍")
         print("Available tools:", ", ".join([tool.name for tool in tools]))
-        
+
         # Example research queries
-        example_queries = [
+        example_queries: List[str] = [
             "What are the latest advancements in quantum computing?",
             "How does climate change affect marine ecosystems?",
             "What is the current consensus on the benefits and risks of artificial intelligence?"
         ]
-        
+
         # Ask user to select a query or enter their own
         print("\nExample research topics:")
         for i, query in enumerate(example_queries):
-            print(f"{i+1}. {query}")
+            print(f"{i + 1}. {query}")
         print("4. Enter your own research topic")
-        
-        user_choice = input("\nSelect an option (1-4): ")
-        
+
+        user_choice: str = input("\nSelect an option (1-4): ")
+
         if user_choice == "4":
-            research_topic = input("\nEnter your research topic: ")
+            research_topic: str = input("\nEnter your research topic: ")
         elif user_choice in ["1", "2", "3"]:
-            research_topic = example_queries[int(user_choice)-1]
+            research_topic: str = example_queries[int(user_choice) - 1]
         else:
-            research_topic = "What are the latest advancements in quantum computing?"
-        
+            research_topic: str = "What are the latest advancements in quantum computing?"
+
         print(f"\n🔍 Researching: {research_topic}")
         print("This may take a few minutes for comprehensive research...\n")
-        
+
         # Conduct research
-        research_results = conduct_research(research_topic)
-        
+        research_results: Dict[str, Any] = conduct_research(research_topic)
+
         # Display results
         print("\n📊 Research Results 📊")
         print(f"Query: {research_results['query']}")
         print("\nAnswer:")
         print(research_results['answer'])
-        
+
         print("\nSources used:")
         for source in research_results['sources']:
             print(f"- {source['source_type']}: {source['query']}")
-        
+
         # Save results
-        save_path = save_research_results(research_results)
+        save_path: str = save_research_results(research_results)
         print(f"\nResearch results saved to {save_path}")
-        
+
 except Exception as e:
     print(f"Error initializing Research Agent: {e}")
     import traceback
+
     traceback.print_exc()
     print("\nPlease ensure required packages are installed:")
-    print("pip install -U langchain langchain-google-genai langchain-community google-generativeai requests python-dotenv wikipedia arxiv pypubmed scholarly")
+    print(
+        "pip install -U langchain langchain-google-genai langchain-community google-generativeai requests python-dotenv wikipedia arxiv pypubmed scholarly")
 ```
