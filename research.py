@@ -33,8 +33,7 @@ def save_research_notes(text: str) -> str:
     notes_directory: str = "research_notes"  # Define the directory for saving notes
 
     # Create the directory if it doesn't exist
-    if not os.path.exists(notes_directory):
-        os.makedirs(notes_directory)
+    os.makedirs(notes_directory, exist_ok=True)
 
     # Generate a timestamp for the filename
     timestamp: str = time.strftime("%Y%m%d-%H%M%S")
@@ -185,8 +184,6 @@ def google_scholar_search(query: str) -> str:
 
 
 # Google Scholar tool using scholarly library
-from langchain.tools import Tool
-
 scholar_tool = Tool(
     name="GoogleScholarSearch",
     func=google_scholar_search,
@@ -277,27 +274,27 @@ try:
         }
 
         # Extract sources and research process from intermediate steps
-        if hasattr(agent_executor, "intermediate_steps"):
-            for step in agent_executor.intermediate_steps:
-                if len(step) >= 2:
-                    tool_name = step[0].tool
-                    tool_input = step[0].tool_input
-                    tool_output = step[1]
+        intermediate_steps = agent_executor.intermediate_steps
+        for step in intermediate_steps:
+            if len(step) >= 2:
+                tool_name = step[0].tool
+                tool_input = step[0].tool_input
+                tool_output = step[1]
 
-                    # Add to research process
-                    formatted_result["research_process"].append({
-                        "tool": tool_name,
-                        "query": tool_input,
-                        "result_summary": summarize_text(str(tool_output)) if len(str(tool_output)) > 500 else str(
-                            tool_output)
+                # Add to research process
+                formatted_result["research_process"].append({
+                    "tool": tool_name,
+                    "query": tool_input,
+                    "result_summary": summarize_text(str(tool_output)) if len(str(tool_output)) > 500 else str(
+                        tool_output)
+                })
+
+                # Add to sources if it's a search tool
+                if tool_name in ["WebSearch", "ArxivSearch", "PubMedSearch", "GoogleScholarSearch", "Wikipedia"]:
+                    formatted_result["sources"].append({
+                        "source_type": tool_name,
+                        "query": tool_input
                     })
-
-                    # Add to sources if it's a search tool
-                    if tool_name in ["WebSearch", "ArxivSearch", "PubMedSearch", "GoogleScholarSearch", "Wikipedia"]:
-                        formatted_result["sources"].append({
-                            "source_type": tool_name,
-                            "query": tool_input
-                        })
 
         return formatted_result
 
@@ -315,8 +312,7 @@ try:
         results_directory: str = "research_results"
 
         # Create research_results directory if it doesn't exist
-        if not os.path.exists(results_directory):
-            os.makedirs(results_directory)
+        os.makedirs(results_directory, exist_ok=True)
 
         filepath: str = os.path.join(results_directory, filename)
 
