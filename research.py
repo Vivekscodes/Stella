@@ -29,7 +29,14 @@ TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY")
 
 
 def save_research_notes(text: str) -> str:
-    """Saves research notes to a file."""
+    """Saves research notes to a file.
+
+    Args:
+        text: The text to save as research notes.
+
+    Returns:
+        A string indicating the success or failure of the save operation.
+    """
     notes_directory: str = "research_notes"  # Define the directory for saving notes
 
     # Create the directory if it doesn't exist
@@ -49,7 +56,14 @@ def save_research_notes(text: str) -> str:
 
 
 def summarize_text(text: str) -> str:
-    """Summarizes the provided text using the LLM."""
+    """Summarizes the provided text using the LLM.
+
+    Args:
+        text: The text to be summarized.
+
+    Returns:
+        A string containing the summarized text, or an error message if summarization fails.
+    """
     try:
         from langchain_core.prompts import ChatPromptTemplate
 
@@ -154,7 +168,14 @@ except Exception as e:
 
 
 def google_scholar_search(query: str) -> str:
-    """Searches Google Scholar for academic papers."""
+    """Searches Google Scholar for academic papers.
+
+    Args:
+        query: The search query for Google Scholar.
+
+    Returns:
+        A string containing the search results from Google Scholar, or an error message if the search fails.
+    """
     try:
         from scholarly import scholarly
 
@@ -274,7 +295,7 @@ try:
         }
 
         # Extract sources and research process from intermediate steps
-        intermediate_steps = agent_executor.intermediate_steps
+        intermediate_steps = agent_executor.agent.llm_chain.prompt.template_format.intermediate_steps
         for step in intermediate_steps:
             if len(step) >= 2:
                 tool_name = step[0].tool
@@ -301,7 +322,15 @@ try:
 
     # Function to save research results
     def save_research_results(results: Dict[str, Any], filename: Optional[str] = None) -> str:
-        """Saves research results to a JSON file."""
+        """Saves research results to a JSON file.
+
+        Args:
+            results: A dictionary containing the research results.
+            filename: An optional filename for the JSON file. If None, a timestamped filename will be generated.
+
+        Returns:
+            A string indicating the success or failure of the save operation.
+        """
 
         # Generate a filename if one isn't provided
         if not filename:
