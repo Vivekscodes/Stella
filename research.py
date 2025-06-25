@@ -29,7 +29,8 @@ TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY")
 
 
 def save_research_notes(text: str) -> str:
-    """Saves research notes to a file.
+    """
+    Saves research notes to a file.
 
     Args:
         text: The text to save as research notes.
@@ -56,7 +57,8 @@ def save_research_notes(text: str) -> str:
 
 
 def summarize_text(text: str) -> str:
-    """Summarizes the provided text using the LLM.
+    """
+    Summarizes the provided text using the LLM.
 
     Args:
         text: The text to be summarized.
@@ -168,7 +170,8 @@ except Exception as e:
 
 
 def google_scholar_search(query: str) -> str:
-    """Searches Google Scholar for academic papers.
+    """
+    Searches Google Scholar for academic papers.
 
     Args:
         query: The search query for Google Scholar.
@@ -295,7 +298,7 @@ try:
         }
 
         # Extract sources and research process from intermediate steps
-        intermediate_steps = agent_executor.agent.llm_chain.prompt.template_format.intermediate_steps
+        intermediate_steps = result["intermediate_steps"]
         for step in intermediate_steps:
             if len(step) >= 2:
                 tool_name = step[0].tool
@@ -322,7 +325,8 @@ try:
 
     # Function to save research results
     def save_research_results(results: Dict[str, Any], filename: Optional[str] = None) -> str:
-        """Saves research results to a JSON file.
+        """
+        Saves research results to a JSON file.
 
         Args:
             results: A dictionary containing the research results.
